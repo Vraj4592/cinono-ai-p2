@@ -1,0 +1,16 @@
+# Systemd unit: Cinono Worker
+
+[Unit]
+Description=Cinono AI Worker
+After=network.target
+
+[Service]
+Type=simple
+User=youruser
+WorkingDirectory=/path/to/cinono-ai-p2
+ExecStart=/path/to/cinono-ai-p2/venv/bin/python worker/worker.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
