@@ -1,0 +1,13 @@
+requests
+moviepy
+ffmpeg-python
+pydub
+whisperx
+whisper
+soundfile
+numpy
+scenedetect
+click
+python-dotenv
+pytest
+Pillow
