@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Cinono AI — Generate</title>
+    <style>
+      body{font-family:Inter, system-ui, Arial;margin:2rem;background:#0f172a;color:#e6eef8}
+      .card{background:#071032;padding:1.5rem;border-radius:8px;max-width:720px;margin:auto}
+      textarea{width:100%;height:120px;padding:8px;border-radius:6px;border:1px solid #243b55;background:#021027;color:#e6eef8}
+      input,select,button{padding:8px;border-radius:6px;border:1px solid #243b55;background:#06213b;color:#e6eef8}
+      button{cursor:pointer}
+      .muted{color:#9fb3d6;font-size:0.9rem}
+      .logs{white-space:pre-wrap;background:#031423;padding:10px;border-radius:6px;margin-top:1rem;max-height:240px;overflow:auto}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Cinono AI — Generate</h1>
+      <p class="muted">Enter a short prompt and press Generate. The orchestrator will expand the prompt, create images, render a short video, and upload to configured platforms.</p>
+
+      <label for="prompt">Prompt</label>
+      <textarea id="prompt">A short marketing tip about time blocking for deep work</textarea>
+
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <label>Platforms</label>
+        <select id="platforms" multiple style="min-width:220px">
+          <option value="tiktok" selected>TikTok</option>
+          <option value="instagram" selected>Instagram</option>
+          <option value="youtube">YouTube</option>
+        </select>
+        <label>Aspect</label>
+        <select id="aspect">
+          <option value="9:16">9:16 (vertical)</option>
+          <option value="16:9">16:9 (landscape)</option>
+          <option value="1:1">1:1 (square)</option>
+        </select>
+        <button id="gen">Generate</button>
+      </div>
+
+      <div id="status" class="muted" style="margin-top:10px">Status: idle</div>
+      <div id="logs" class="logs"></div>
+    </div>
+
+    <script>
+      const gen = document.getElementById('gen');
+      const promptEl = document.getElementById('prompt');
+      const logs = document.getElementById('logs');
+      const status = document.getElementById('status');
+
+      gen.addEventListener('click', async () => {
+        const prompt = promptEl.value.trim();
+        if(!prompt) return alert('Enter a prompt');
+        const selected = Array.from(document.getElementById('platforms').selectedOptions).map(o=>o.value);
+        const aspect = document.getElementById('aspect').value;
+        status.textContent = 'Status: queuing...';
+        logs.textContent = '';
+        try{
+          const res = await fetch('/generate', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,platforms:selected,aspect})});
+          const data = await res.json();
+          logs.textContent += JSON.stringify(data,null,2)+"\n";
+          status.textContent = 'Status: queued — job id ' + (data.job_id||'') ;
+          pollJob(data.job_id);
+        }catch(err){
+          status.textContent = 'Status: request failed';
+          logs.textContent += String(err);
+        }
+      });
+
+      async function pollJob(jobId){
+        if(!jobId) return;
+        status.textContent = 'Status: queued — waiting for start';
+        // lightweight poll of runs folder — server will update meta.json when done
+        const poll = setInterval(async ()=>{
+          try{
+            const resp = await fetch('/job_status?job_id='+encodeURIComponent(jobId));
+            const d = await resp.json();
+            logs.textContent = d.log || logs.textContent;
+            status.textContent = 'Status: '+(d.status||'unknown');
+            if(d.status==='complete' || d.status==='failed'){
+              clearInterval(poll);
+            }
+          }catch(e){
+            // ignore
+          }
+        },3000);
+      }
+    </script>
+  </body>
+</html>
